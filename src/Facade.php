@@ -11,75 +11,168 @@
 
 namespace League\FactoryMuffin\Faker;
 
+use Closure;
+use Faker\Factory;
+use Faker\Generator;
+use Faker\Provider\Base;
+
 /**
- * This is the faker facade class.
+ * This is the faker class.
  *
- * This class dynamically proxies static method calls to the underlying faker.
- *
- * @see League\FactoryMuffin\Faker\Faker
+ * This class is not intended to be used directly, but should be used through
+ * the provided facade. The only time where you should be directly calling
+ * methods here should be when you're using method chaining after initially
+ * using the facade.
  *
  * @author Graham Campbell <graham@alt-three.com>
  */
-class Facade
+class Faker
 {
     /**
-     * The underlying faker instance.
+     * The generator instance.
      *
-     * @var \League\FactoryMuffin\Faker\Faker
+     * @var Generator|null
      */
-    private static $instance;
+    private ?Generator $generator;
 
     /**
-     * Get the underlying faker instance.
+     * The faker localization.
      *
-     * We'll always cache the instance and reuse it.
-     *
-     * @return \League\FactoryMuffin\Faker\Faker
+     * @var string
      */
-    public static function instance()
+    private string $locale = 'en_EN';
+
+    /**
+     * Create a new faker instance.
+     *
+     * @param Generator|null $generator The generator instance.
+     *
+     * @return void
+     */
+    public function __construct(?Generator  $generator = null)
     {
-        if (!self::$instance) {
-            self::$instance = new Faker();
+        $this->generator = $generator;
+    }
+
+    /**
+     * Set the locale.
+     *
+     * @param string $local The locale.
+     *
+     * @return Faker
+     */
+    public function setLocale(string $local): self
+    {
+        $this->locale = $local;
+
+        $this->generator = null;
+
+        return $this;
+    }
+
+    /**
+     * Get the generator instance.
+     *
+     * @return Generator
+     */
+    public function getGenerator(): Generator
+    {
+        if (null === $this->generator) {
+            $this->generator = Factory::create($this->locale);
         }
 
-        return self::$instance;
+        return $this->generator;
     }
 
     /**
-     * Reset the underlying faker instance.
+     * Add a provider.
      *
-     * @return \League\FactoryMuffin\Faker\Faker
+     * @param Base $provider The provider instance.
+     *
+     * @return Faker
      */
-    public static function reset()
+    public function addProvider(Base $provider): self
     {
-        self::$instance = null;
+        $this->getGenerator()->addProvider($provider);
 
-        return self::instance();
+        return $this;
     }
 
     /**
-     * Handle dynamic, static calls to the object.
+     * Get the providers.
      *
-     * @codeCoverageIgnore
+     * @return Base[]
+     */
+    public function getProviders(): array
+    {
+        return $this->getGenerator()->getProviders();
+    }
+
+    /**
+     * Wrap a faker format in a closure.
+     *
+     * @param string $formatter The formatter.
+     * @param array  $arguments The arguments.
+     *
+     * @return Closure
+     */
+    public function format(string $formatter, array $arguments = []): Closure
+    {
+        $generator = $this->getGenerator();
+
+        return function () use ($generator, $formatter, $arguments) {
+            return $generator->format($formatter, $arguments);
+        };
+    }
+
+    /**
+     * Get a formatter.
+     *
+     * @param string $formatter The formatter.
+     *
+     * @return Closure
+     */
+    public function getFormatter(string $formatter): Closure
+    {
+        return $this->getGenerator()->getFormatter($formatter);
+    }
+
+    /**
+     * Make the generated item unique.
+     *
+     * @param bool $reset      Should we reset the unique tracker?
+     * @param int $maxRetries How many times should we retry?
+     *
+     * @return Faker
+     */
+    public function unique(bool $reset = false, int $maxRetries = 10000): self
+    {
+        return new static($this->getGenerator()->unique($reset, $maxRetries));
+    }
+
+    /**
+     * Make the generated item optional.
+     *
+     * @param float $weight  The probability of not receiving the default value.
+     * @param mixed $default The default item.
+     *
+     * @return Faker
+     */
+    public function optional(float $weight = 0.5, mixed $default = null): self
+    {
+        return new static($this->getGenerator()->optional($weight, $default));
+    }
+
+    /**
+     * Dynamically wrap faker method calls in closures.
      *
      * @param string $method    The method name.
      * @param array  $arguments The arguments.
      *
-     * @return mixed
+     * @return Closure
      */
-    public static function __callStatic($method, $arguments)
+    public function __call(string $method, array $arguments)
     {
-        switch (count($arguments)) {
-            case 0:
-                return self::instance()->$method();
-            case 1:
-                return self::instance()->$method($arguments[0]);
-            case 2:
-                return self::instance()->$method($arguments[0], $arguments[1]);
-            case 3:
-                return self::instance()->$method($arguments[0], $arguments[1], $arguments[2]);
-            default:
-                return call_user_func_array([self::instance(), $method], $arguments);
-        }
+        return $this->format($method, $arguments);
     }
 }

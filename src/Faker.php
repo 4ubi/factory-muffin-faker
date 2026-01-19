@@ -11,7 +11,10 @@
 
 namespace League\FactoryMuffin\Faker;
 
+use Closure;
 use Faker\Factory;
+use Faker\Generator;
+use Faker\Provider\Base;
 
 /**
  * This is the faker class.
@@ -28,25 +31,25 @@ class Faker
     /**
      * The generator instance.
      *
-     * @var \Faker\Generator
+     * @var Generator|null
      */
-    private $generator;
+    private ?Generator $generator;
 
     /**
      * The faker localization.
      *
      * @var string
      */
-    private $locale = 'en_EN';
+    private string $locale = 'en_EN';
 
     /**
      * Create a new faker instance.
      *
-     * @param \Faker\Generator|null $generator The generator instance.
+     * @param Generator|null $generator The generator instance.
      *
      * @return void
      */
-    public function __construct($generator = null)
+    public function __construct(?Generator  $generator = null)
     {
         $this->generator = $generator;
     }
@@ -56,9 +59,9 @@ class Faker
      *
      * @param string $local The locale.
      *
-     * @return \League\FactoryMuffin\Faker\Faker
+     * @return Faker
      */
-    public function setLocale($local)
+    public function setLocale(string $local): self
     {
         $this->locale = $local;
 
@@ -70,11 +73,11 @@ class Faker
     /**
      * Get the generator instance.
      *
-     * @return \Faker\Generator
+     * @return Generator
      */
-    public function getGenerator()
+    public function getGenerator(): Generator
     {
-        if (!$this->generator) {
+        if (null === $this->generator) {
             $this->generator = Factory::create($this->locale);
         }
 
@@ -84,11 +87,11 @@ class Faker
     /**
      * Add a provider.
      *
-     * @param \Faker\Provider\Base $provider The provider instance.
+     * @param Base $provider The provider instance.
      *
-     * @return \League\FactoryMuffin\Faker\Faker
+     * @return Faker
      */
-    public function addProvider($provider)
+    public function addProvider(Base $provider): self
     {
         $this->getGenerator()->addProvider($provider);
 
@@ -98,9 +101,9 @@ class Faker
     /**
      * Get the providers.
      *
-     * @return \Faker\Provider\Base[]
+     * @return Base[]
      */
-    public function getProviders()
+    public function getProviders(): array
     {
         return $this->getGenerator()->getProviders();
     }
@@ -111,9 +114,9 @@ class Faker
      * @param string $formatter The formatter.
      * @param array  $arguments The arguments.
      *
-     * @return \Closure
+     * @return Closure
      */
-    public function format($formatter, array $arguments = [])
+    public function format(string $formatter, array $arguments = []): Closure
     {
         $generator = $this->getGenerator();
 
@@ -127,9 +130,9 @@ class Faker
      *
      * @param string $formatter The formatter.
      *
-     * @return \Closure
+     * @return Closure
      */
-    public function getFormatter($formatter)
+    public function getFormatter(string $formatter): Closure
     {
         return $this->getGenerator()->getFormatter($formatter);
     }
@@ -138,11 +141,11 @@ class Faker
      * Make the generated item unique.
      *
      * @param bool $reset      Should we reset the unique tracker?
-     * @param int  $maxRetries How many times should we retry?
+     * @param int $maxRetries How many times should we retry?
      *
-     * @return \League\FactoryMuffin\Faker\Faker
+     * @return Faker
      */
-    public function unique($reset = false, $maxRetries = 10000)
+    public function unique(bool $reset = false, int $maxRetries = 10000): self
     {
         return new static($this->getGenerator()->unique($reset, $maxRetries));
     }
@@ -153,9 +156,9 @@ class Faker
      * @param float $weight  The probability of not receiving the default value.
      * @param mixed $default The default item.
      *
-     * @return \League\FactoryMuffin\Faker\Faker
+     * @return Faker
      */
-    public function optional($weight = 0.5, $default = null)
+    public function optional(float $weight = 0.5, mixed $default = null): self
     {
         return new static($this->getGenerator()->optional($weight, $default));
     }
@@ -166,9 +169,9 @@ class Faker
      * @param string $method    The method name.
      * @param array  $arguments The arguments.
      *
-     * @return \Closure
+     * @return Closure
      */
-    public function __call($method, $arguments)
+    public function __call(string $method, array $arguments)
     {
         return $this->format($method, $arguments);
     }
